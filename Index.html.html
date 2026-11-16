@@ -460,7 +460,7 @@
             const tbody = document.getElementById('dashboard-tbody');
             const loader = document.getElementById('loading-indicator');
             
-            if (GAS_WEB_APP_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) {
+            if (GAS_WEB_APP_URL.includes("https://script.google.com/macros/s/AKfycbzHOQIbmf3_S-I_y0g6NArYbWg_XhTwztInJg3iiMI7a9JpLUi6walpJgOCdmNbjhRrPw/exec")) {
                 tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-red-500">กรุณาใส่ URL ของ Google Apps Script ในโค้ดก่อนใช้งานครับ</td></tr>`;
                 return;
             }
