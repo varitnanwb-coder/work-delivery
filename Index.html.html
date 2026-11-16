@@ -6,8 +6,6 @@
     <title>แบบฟอร์มใบส่งมอบงาน (Work Delivery Form)</title>
     <!-- Tailwind CSS สำหรับตกแต่งหน้าตา -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- html2pdf สำหรับแปลงหน้าเว็บเป็น PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Sarabun', sans-serif; }
@@ -18,9 +16,17 @@
             cursor: crosshair;
         }
         @media print {
-            body { background: white; padding: 0; }
+            body { background: white; padding: 0; margin: 0; }
             .no-print { display: none !important; }
-            .print-container { box-shadow: none; padding: 0; margin: 0; width: 100%; }
+            .print-container { 
+                box-shadow: none !important; 
+                padding: 0 !important; 
+                margin: 0 !important; 
+                width: 100% !important; 
+                max-width: 100% !important;
+            }
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
     </style>
 </head>
@@ -32,7 +38,7 @@
             <h1 class="text-xl font-bold">📋 ระบบใบส่งมอบงาน (Work Delivery)</h1>
             <div class="flex flex-wrap gap-2">
                 <button onclick="switchTab('form')" id="btn-tab-form" class="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded font-medium text-sm transition">1. กรอกฟอร์ม</button>
-                <button onclick="switchTab('preview')" id="btn-tab-preview" class="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded font-medium text-sm transition">2. ดูเอกสาร & โหลด PDF</button>
+                <button onclick="switchTab('preview')" id="btn-tab-preview" class="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded font-medium text-sm transition">2. ดูเอกสาร & พิมพ์ PDF</button>
                 <button onclick="saveToCloud()" class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded font-medium text-sm transition shadow">☁️ บันทึกลง Google Sheets</button>
             </div>
         </div>
@@ -137,7 +143,6 @@
                     <button onclick="addItemRow()" class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg">+ เพิ่มรายการ</button>
                 </div>
                 <div id="items-container" class="space-y-3">
-                    <!-- รายการที่ 1 -->
                     <div class="item-row grid grid-cols-1 sm:grid-cols-12 gap-2 p-3 bg-slate-50 border rounded-xl relative">
                         <div class="sm:col-span-5">
                             <label class="text-xs text-slate-500">รายละเอียดงาน / โมดูล</label>
@@ -209,21 +214,21 @@
             <!-- ปุ่มไปหน้าพรีวิว -->
             <div class="text-center pt-4">
                 <button onclick="switchTab('preview'); generatePreview();" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg text-base">
-                    👁️ ตรวจสอบเอกสารและดาวน์โหลด PDF
+                    👁️ ตรวจสอบเอกสารและพิมพ์ PDF
                 </button>
             </div>
         </section>
 
-        <!-- ================= แท็บที่ 2: หน้าเอกสารจริง A4 & โหลด PDF ================= -->
+        <!-- ================= แท็บที่ 2: หน้าเอกสารจริง A4 & พิมพ์ PDF ================= -->
         <section id="section-preview" class="hidden space-y-6">
             <div class="flex justify-between items-center no-print bg-white p-4 rounded-xl shadow-sm border">
                 <button onclick="switchTab('form')" class="bg-slate-200 hover:bg-slate-300 px-4 py-2 rounded text-sm font-medium">← กลับไปแก้ไขฟอร์ม</button>
                 <button onclick="downloadPDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded text-sm font-bold shadow flex items-center gap-2">
-                    📥 ดาวน์โหลด PDF (A4)
+                    🖨️ พิมพ์ / บันทึกเป็น PDF (A4)
                 </button>
             </div>
 
-            <!-- พื้นที่เอกสารขนาด A4 สำหรับแปลงเป็น PDF -->
+            <!-- พื้นที่เอกสารขนาด A4 สำหรับพิมพ์ -->
             <div id="pdf-content" class="print-container bg-white p-8 sm:p-12 rounded-2xl shadow-xl border border-slate-200 max-w-[210mm] mx-auto text-slate-900 space-y-6 text-sm">
                 
                 <!-- หัวกระดาษ -->
@@ -272,9 +277,7 @@
                                 <th class="border border-slate-300 p-2">หมายเหตุ</th>
                             </tr>
                         </thead>
-                        <tbody id="p-items-tbody">
-                            <!-- Items inserted by JS -->
-                        </tbody>
+                        <tbody id="p-items-tbody"></tbody>
                     </table>
                 </div>
 
@@ -321,18 +324,15 @@
 
     <!-- JavaScript สำหรับระบบทั้งหมด -->
     <script>
-        // ตั้งค่า URL ของ Google Apps Script Web App (แทนที่ด้วย URL ของคุณหลังจากทำตามขั้นตอนด้านบน)
+        // แทนที่ URL นี้ด้วย Web App URL ของ Google Apps Script ของคุณ
         const GAS_WEB_APP_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
 
-        // กำหนดวันที่ปัจจุบันให้ฟอร์ม
         document.getElementById('deliveryDate').valueAsDate = new Date();
 
-        // ตัวแปรเก็บรูปลายเซ็นและรูปภาพแนบ
         let senderSigDataUrl = '';
         let receiverSigDataUrl = '';
         let uploadedImages = [];
 
-        // ฟังก์ชันสลับแท็บ
         function switchTab(tab) {
             if (tab === 'form') {
                 document.getElementById('section-form').classList.remove('hidden');
@@ -348,7 +348,6 @@
             }
         }
 
-        // ฟังก์ชันเติมข้อมูลตัวอย่าง
         function loadSampleData() {
             document.getElementById('docNumber').value = "JOB-20261113-001";
             document.getElementById('senderCompany').value = "บริษัท เทค โซลูชั่นส์ จำกัด";
@@ -368,7 +367,6 @@
             alert("เติมข้อมูลตัวอย่างเรียบร้อยแล้ว!");
         }
 
-        // เพิ่มแถวรายการส่งมอบ
         function addItemRow(desc='', qty='', status='', remark='') {
             const container = document.getElementById('items-container');
             const div = document.createElement('div');
@@ -393,10 +391,8 @@
             container.appendChild(div);
         }
 
-        // จัดการอัปโหลดรูปภาพ
         function handleImageUpload(event) {
             const files = event.target.files;
-            const container = document.getElementById('image-preview-container');
             for (let file of files) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
@@ -421,7 +417,6 @@
             });
         }
 
-        // Setup ลายเซ็น Canvas (รองรับทั้ง Touch บนมือถือและ Mouse บนคอมพิวเตอร์)
         function setupSignaturePad(canvasId) {
             const canvas = document.getElementById(canvasId);
             const ctx = canvas.getContext('2d');
@@ -475,7 +470,6 @@
             }
         }
 
-        // นำข้อมูลลงหน้าพรีวิว A4
         function generatePreview() {
             document.getElementById('p-docNumber').innerText = document.getElementById('docNumber').value;
             document.getElementById('p-deliveryDate').innerText = document.getElementById('deliveryDate').value;
@@ -491,7 +485,6 @@
             document.getElementById('p-projectName').innerText = document.getElementById('projectName').value;
             document.getElementById('p-projectScope').innerText = document.getElementById('projectScope').value;
 
-            // ตารางรายการ
             const tbody = document.getElementById('p-items-tbody');
             tbody.innerHTML = '';
             const rows = document.querySelectorAll('.item-row');
@@ -512,7 +505,6 @@
                 `;
             });
 
-            // รูปภาพพรีวิว
             const imgSection = document.getElementById('p-images-section');
             const imgGrid = document.getElementById('p-images-grid');
             imgGrid.innerHTML = '';
@@ -525,7 +517,6 @@
                 imgSection.classList.add('hidden');
             }
 
-            // ลายเซ็น
             document.getElementById('p-senderSignName').innerText = document.getElementById('senderSignName').value;
             document.getElementById('p-senderSignPos').innerText = document.getElementById('senderSignPosition').value;
             document.getElementById('p-senderSignDate').innerText = document.getElementById('deliveryDate').value;
@@ -545,27 +536,17 @@
             }
         }
 
-        // ฟังก์ชันดาวน์โหลด PDF
+        // ฟังก์ชันสั่งพิมพ์ / บันทึกเป็น PDF ผ่านระบบเบราว์เซอร์โดยตรง
         function downloadPDF() {
-            const element = document.getElementById('pdf-content');
-            const opt = {
-                margin:       10,
-                filename:     `Delivery_${document.getElementById('docNumber').value}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-            html2pdf().from(element).set(opt).save();
+            window.print();
         }
 
-        // ฟังก์ชันบันทึกข้อมูลขึ้น Google Sheets (ทางเลือกที่ 2)
         async function saveToCloud() {
             if (GAS_WEB_APP_URL.includes("https://script.google.com/macros/s/AKfycbzHOQIbmf3_S-I_y0g6NArYbWg_XhTwztInJg3iiMI7a9JpLUi6walpJgOCdmNbjhRrPw/exec")) {
                 alert("กรุณานำ URL ของ Google Apps Script มาใส่ในตัวแปร GAS_WEB_APP_URL ในโค้ดก่อนใช้งานจริงครับ");
                 return;
             }
 
-            // รวบรวมข้อมูลทั้งหมดเป็น JSON
             const items = [];
             document.querySelectorAll('.item-row').forEach(row => {
                 items.push({
