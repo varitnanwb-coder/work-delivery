@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบใบส่งมอบงานและติดตามสถานะ (Work Delivery & Dashboard)</title>
-    <!-- Tailwind CSS -->
+    <title>ระบบใบส่งมอบงาน (Work Delivery System)</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
@@ -32,7 +31,6 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen pb-12">
 
-    <!-- เมนูด้านบน / แถบควบคุม -->
     <header class="bg-blue-600 text-white shadow-md p-4 sticky top-0 z-50 no-print">
         <div class="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
             <h1 class="text-xl font-bold">📋 ระบบใบส่งมอบงาน (Work Delivery)</h1>
@@ -52,28 +50,29 @@
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                     <div>
                         <h2 class="text-lg font-bold text-blue-600">รายการใบส่งมอบงานทั้งหมด</h2>
-                        <p class="text-xs text-slate-500">ตรวจสอบสถานะ ใบร่าง (Draft) และเอกสารสมบูรณ์ (Completed)</p>
+                        <p class="text-xs text-slate-500">เชื่อมข้อมูลตรงกับ: ฐานข้อมูลใบส่งมอบงาน (Work Delivery Database)</p>
                     </div>
                     <div class="flex gap-2 w-full sm:w-auto">
                         <button onclick="createNewForm()" class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 rounded-lg font-medium shadow">+ สร้างใบร่างใหม่</button>
-                        <button onclick="loadDeliveriesFromCloud()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium">🔄 รีเฟรชข้อมูล</button>
+                        <button onclick="loadDeliveriesFromCloud()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium">🔄 โหลดข้อมูลล่าสุด</button>
                     </div>
                 </div>
 
-                <!-- ตารางแสดงรายการบนมือถือและคอมพิวเตอร์ -->
+                <div id="loading-indicator" class="hidden text-center py-8 text-sm text-blue-600 font-medium">
+                    ⏳ กำลังโหลดข้อมูลจาก Google Sheets...
+                </div>
+
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs border-collapse">
                         <thead>
                             <tr class="bg-slate-100 text-slate-700 border-b">
                                 <th class="p-3">เลขที่ใบงาน</th>
                                 <th class="p-3">โครงการ / ลูกค้า</th>
-                                <th class="p-3 text-center">สถานะ</th>
-                                <th class="p-3 text-center">การจัดการ</th>
+                                <th class="p-3 text-center">สถานะการลงนาม</th>
+                                <th class="p-3 text-center">จัดการ</th>
                             </tr>
                         </thead>
-                        <tbody id="dashboard-tbody">
-                            <!-- รายการจะถูกแทรกลงที่นี่ด้วย JavaScript -->
-                        </tbody>
+                        <tbody id="dashboard-tbody"></tbody>
                     </table>
                 </div>
             </div>
@@ -81,21 +80,21 @@
 
         <!-- ================= แท็บที่ 1: หน้าจอสำหรับกรอกฟอร์ม ================= -->
         <section id="section-form" class="hidden space-y-6">
-            <div id="lock-banner" class="hidden bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center justify-between text-amber-800 text-xs">
-                <span>🔒 <b>เอกสารนี้สมบูรณ์แล้ว (ลงนามครบถ้วน):</b> อยู่ในโหมดอ่านอย่างเดียว ไม่สามารถแก้ไขข้อมูลได้</span>
-                <button onclick="switchTab('preview')" class="bg-amber-600 text-white px-3 py-1 rounded">ดูเอกสาร</button>
+            <div id="lock-banner" class="hidden bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between text-emerald-800 text-xs">
+                <span>🔒 <b>เอกสารสมบูรณ์แล้ว (ลงนามครบ 2 ฝ่าย):</b> อยู่ในโหมดอ่านอย่างเดียว ไม่สามารถแก้ไขได้อีก</span>
+                <button onclick="switchTab('preview')" class="bg-emerald-600 text-white px-3 py-1 rounded">ดูเอกสาร A4</button>
             </div>
 
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-lg font-bold text-blue-600">ข้อมูลโครงการและคู่สัญญา</h2>
-                    <button id="btn-sample" onclick="loadSampleData()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1 rounded border">✨ เติมข้อมูลตัวอย่าง</button>
+                    <span id="form-current-status" class="text-xs font-semibold px-2.5 py-1 rounded bg-amber-100 text-amber-800">สถานะ: ใบร่าง (Draft)</span>
                 </div>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-semibold mb-1">เลขที่ใบส่งมอบ / เลขที่ใบงาน (Job/Doc No.)</label>
-                        <input type="text" id="docNumber" class="w-full border rounded-lg p-2.5 text-sm" value="JOB-20261113-001">
+                        <label class="block text-sm font-semibold mb-1">เลขที่ใบส่งมอบ / เลขที่ใบงาน (Doc No.)</label>
+                        <input type="text" id="docNumber" class="w-full border rounded-lg p-2.5 text-sm bg-slate-50 font-semibold text-blue-700">
                     </div>
                     <div>
                         <label class="block text-sm font-semibold mb-1">วันที่ส่งมอบงาน</label>
@@ -106,57 +105,55 @@
 
             <!-- ข้อมูลผู้ส่งมอบ & ผู้รับมอบ -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- ผู้ส่งมอบ -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
                     <h3 class="font-bold text-slate-700 border-b pb-2">🏢 ฝ่ายผู้ส่งมอบ (Vendor / Contractor)</h3>
                     <div>
                         <label class="block text-xs font-semibold mb-1">ชื่อบริษัท / หน่วยงาน</label>
-                        <input type="text" id="senderCompany" class="w-full border rounded-lg p-2 text-sm" value="บริษัท เทค โซลูชั่นส์ จำกัด">
+                        <input type="text" id="senderCompany" class="w-full border rounded-lg p-2 text-sm">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold mb-1">ชื่อผู้ติดต่อ / ผู้ส่งมอบ</label>
-                        <input type="text" id="senderContact" class="w-full border rounded-lg p-2 text-sm" value="สมชาย มุ่งมั่น">
+                        <input type="text" id="senderContact" class="w-full border rounded-lg p-2 text-sm">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-xs font-semibold mb-1">เบอร์โทรศัพท์</label>
-                            <input type="text" id="senderPhone" class="w-full border rounded-lg p-2 text-sm" value="081-234-5678">
+                            <input type="text" id="senderPhone" class="w-full border rounded-lg p-2 text-sm">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold mb-1">ตำแหน่ง</label>
-                            <input type="text" id="senderSignPosition" class="w-full border rounded-lg p-2 text-sm" value="Project Manager">
+                            <input type="text" id="senderSignPosition" class="w-full border rounded-lg p-2 text-sm">
                         </div>
                     </div>
                     <div>
                         <label class="block text-xs font-semibold mb-1">ที่อยู่</label>
-                        <textarea id="senderAddress" class="w-full border rounded-lg p-2 text-sm" rows="2">123 อาคารสาทรทาวเวอร์ ถ.สาทรใต้ กรุงเทพฯ</textarea>
+                        <textarea id="senderAddress" class="w-full border rounded-lg p-2 text-sm" rows="2"></textarea>
                     </div>
                 </div>
 
-                <!-- ผู้รับมอบ -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
                     <h3 class="font-bold text-slate-700 border-b pb-2">🤝 ฝ่ายผู้รับมอบ (Client / Customer)</h3>
                     <div>
                         <label class="block text-xs font-semibold mb-1">ชื่อบริษัทลูกค้า / หน่วยงาน</label>
-                        <input type="text" id="clientName" class="w-full border rounded-lg p-2 text-sm" value="บริษัท สยาม ริเทล จำกัด (มหาชน)">
+                        <input type="text" id="clientName" class="w-full border rounded-lg p-2 text-sm">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold mb-1">ชื่อผู้รับมอบงาน</label>
-                        <input type="text" id="clientContact" class="w-full border rounded-lg p-2 text-sm" value="วิภาดา รักดี">
+                        <input type="text" id="clientContact" class="w-full border rounded-lg p-2 text-sm">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-xs font-semibold mb-1">เบอร์โทรศัพท์</label>
-                            <input type="text" id="clientPhone" class="w-full border rounded-lg p-2 text-sm" value="02-987-6543">
+                            <input type="text" id="clientPhone" class="w-full border rounded-lg p-2 text-sm">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold mb-1">ตำแหน่ง</label>
-                            <input type="text" id="receiverSignPosition" class="w-full border rounded-lg p-2 text-sm" value="IT Director">
+                            <input type="text" id="receiverSignPosition" class="w-full border rounded-lg p-2 text-sm">
                         </div>
                     </div>
                     <div>
                         <label class="block text-xs font-semibold mb-1">ที่อยู่</label>
-                        <textarea id="clientAddress" class="w-full border rounded-lg p-2 text-sm" rows="2">456 ถนนสุขุมวิท คลองเตย กรุงเทพฯ</textarea>
+                        <textarea id="clientAddress" class="w-full border rounded-lg p-2 text-sm" rows="2"></textarea>
                     </div>
                 </div>
             </div>
@@ -166,11 +163,11 @@
                 <h3 class="font-bold text-blue-600">📌 รายละเอียดโครงการ</h3>
                 <div>
                     <label class="block text-sm font-semibold mb-1">ชื่อโครงการ (Project Name)</label>
-                    <input type="text" id="projectName" class="w-full border rounded-lg p-2.5 text-sm" value="โครงการพัฒนาระบบคลังสินค้าและจัดการสต็อกออนไลน์ (Phase 1)">
+                    <input type="text" id="projectName" class="w-full border rounded-lg p-2.5 text-sm">
                 </div>
                 <div>
                     <label class="block text-sm font-semibold mb-1">ขอบเขตงานและเงื่อนไขการส่งมอบ</label>
-                    <textarea id="projectScope" class="w-full border rounded-lg p-2.5 text-sm" rows="2">ส่งมอบระบบบริหารจัดการคลังสินค้า เวอร์ชั่น 1.0 พร้อมคู่มือการใช้งานและเอกสารการทดสอบระบบ (UAT sign-off)</textarea>
+                    <textarea id="projectScope" class="w-full border rounded-lg p-2.5 text-sm" rows="2"></textarea>
                 </div>
             </div>
 
@@ -180,78 +177,72 @@
                     <h3 class="font-bold text-blue-600">📦 รายการส่งมอบงาน (Deliverable Items)</h3>
                     <button id="btn-add-item" onclick="addItemRow()" class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg">+ เพิ่มรายการ</button>
                 </div>
-                <div id="items-container" class="space-y-3">
-                    <div class="item-row grid grid-cols-1 sm:grid-cols-12 gap-2 p-3 bg-slate-50 border rounded-xl relative">
-                        <div class="sm:col-span-5">
-                            <input type="text" class="item-desc w-full border rounded p-1.5 text-sm bg-white" placeholder="รายละเอียดงาน" value="ระบบจัดการสต็อกและคลังสินค้า">
-                        </div>
-                        <div class="sm:col-span-2">
-                            <input type="text" class="item-qty w-full border rounded p-1.5 text-sm bg-white" placeholder="จำนวน" value="1 ระบบ">
-                        </div>
-                        <div class="sm:col-span-2">
-                            <input type="text" class="item-status w-full border rounded p-1.5 text-sm bg-white" placeholder="สถานะ" value="ผ่านการทดสอบ">
-                        </div>
-                        <div class="sm:col-span-2">
-                            <input type="text" class="item-remark w-full border rounded p-1.5 text-sm bg-white" placeholder="หมายเหตุ" value="พร้อมใช้งาน">
-                        </div>
-                        <div class="sm:col-span-1 flex items-end">
-                            <button onclick="this.closest('.item-row').remove()" class="item-del-btn w-full bg-red-100 hover:bg-red-200 text-red-600 p-1.5 rounded text-xs">ลบ</button>
-                        </div>
-                    </div>
-                </div>
+                <div id="items-container" class="space-y-3"></div>
             </div>
 
             <!-- แนบรูปภาพประกอบ -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-                <h3 class="font-bold text-blue-600">📷 แนบรูปภาพหน้างาน / หลักฐานประกอบ</h3>
+                <h3 class="font-bold text-blue-600">📷 แนบรูปภาพหน้างาน / หลักฐานประกอบ (แสดงในหน้าพิมพ์ PDF)</h3>
                 <input type="file" id="imageInput" accept="image/*" multiple onchange="handleImageUpload(event)" class="w-full border rounded-lg p-2 text-sm bg-slate-50">
                 <div id="image-preview-container" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
             </div>
 
-            <!-- ส่วนเซ็นชื่อดิจิทัล (Digital Signatures) -->
+            <!-- ส่วนเซ็นชื่อดิจิทัล (เซ็นได้ขณะเป็นฉบับร่าง) -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- ผู้ส่งมอบ Sign -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-3">
-                    <h3 class="font-bold text-slate-700">✍️ ลายเซ็นผู้ส่งมอบงาน</h3>
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-slate-700">✍️ ลายเซ็นผู้ส่งมอบงาน</h3>
+                        <span id="badgeSenderSigned" class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-500">ยังไม่ลงนาม</span>
+                    </div>
                     <div>
                         <label class="text-xs font-semibold">ชื่อ-นามสกุล ผู้ส่งมอบ</label>
-                        <input type="text" id="senderSignName" class="w-full border rounded p-2 text-sm mt-1" value="สมชาย มุ่งมั่น">
+                        <input type="text" id="senderSignName" class="w-full border rounded p-2 text-sm mt-1">
                     </div>
-                    <div class="relative">
-                        <canvas id="canvasSender" class="signature-pad w-full h-40 rounded-lg"></canvas>
-                        <div class="absolute top-2 right-2 flex gap-1">
-                            <button onclick="clearPad('sender')" class="pad-btn bg-slate-200 hover:bg-slate-300 text-xs px-2 py-1 rounded">ล้าง</button>
+                    <div id="senderSavedPreview" class="hidden border rounded-lg p-2 bg-slate-50 text-center">
+                        <img id="senderSavedImg" class="h-28 mx-auto object-contain">
+                        <button onclick="reSign('sender')" class="pad-btn mt-1 text-xs text-red-600 underline">เซ็นใหม่</button>
+                    </div>
+                    <div id="senderPadWrapper" class="space-y-2">
+                        <div class="relative">
+                            <canvas id="canvasSender" class="signature-pad w-full h-36 rounded-lg"></canvas>
+                            <button onclick="clearPad('sender')" class="pad-btn absolute top-2 right-2 bg-slate-200 hover:bg-slate-300 text-xs px-2 py-1 rounded">ล้าง</button>
                         </div>
+                        <button onclick="saveSignature('sender')" class="pad-btn w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-xs font-medium shadow">✓ ยืนยันลายเซ็นผู้ส่งมอบ</button>
                     </div>
-                    <button onclick="saveSignature('sender')" class="pad-btn w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium shadow">💾 บันทึกลายเซ็นผู้ส่งมอบ</button>
-                    <p id="statusSender" class="text-xs text-center text-emerald-600 font-semibold"></p>
                 </div>
 
                 <!-- ผู้รับมอบ Sign -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-3">
-                    <h3 class="font-bold text-slate-700">✍️ ลายเซ็นผู้รับมอบงาน</h3>
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-slate-700">✍️ ลายเซ็นผู้รับมอบงาน</h3>
+                        <span id="badgeReceiverSigned" class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-500">ยังไม่ลงนาม</span>
+                    </div>
                     <div>
                         <label class="text-xs font-semibold">ชื่อ-นามสกุล ผู้รับมอบ</label>
-                        <input type="text" id="receiverSignName" class="w-full border rounded p-2 text-sm mt-1" value="วิภาดา รักดี">
+                        <input type="text" id="receiverSignName" class="w-full border rounded p-2 text-sm mt-1">
                     </div>
-                    <div class="relative">
-                        <canvas id="canvasReceiver" class="signature-pad w-full h-40 rounded-lg"></canvas>
-                        <div class="absolute top-2 right-2 flex gap-1">
-                            <button onclick="clearPad('receiver')" class="pad-btn bg-slate-200 hover:bg-slate-300 text-xs px-2 py-1 rounded">ล้าง</button>
+                    <div id="receiverSavedPreview" class="hidden border rounded-lg p-2 bg-slate-50 text-center">
+                        <img id="receiverSavedImg" class="h-28 mx-auto object-contain">
+                        <button onclick="reSign('receiver')" class="pad-btn mt-1 text-xs text-red-600 underline">เซ็นใหม่</button>
+                    </div>
+                    <div id="receiverPadWrapper" class="space-y-2">
+                        <div class="relative">
+                            <canvas id="canvasReceiver" class="signature-pad w-full h-36 rounded-lg"></canvas>
+                            <button onclick="clearPad('receiver')" class="pad-btn absolute top-2 right-2 bg-slate-200 hover:bg-slate-300 text-xs px-2 py-1 rounded">ล้าง</button>
                         </div>
+                        <button onclick="saveSignature('receiver')" class="pad-btn w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-xs font-medium shadow">✓ ยืนยันลายเซ็นผู้รับมอบ</button>
                     </div>
-                    <button onclick="saveSignature('receiver')" class="pad-btn w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium shadow">💾 บันทึกลายเซ็นผู้รับมอบ</button>
-                    <p id="statusReceiver" class="text-xs text-center text-emerald-600 font-semibold"></p>
                 </div>
             </div>
 
-            <!-- ปุ่มบันทึกสถานะต่างๆ -->
-            <div class="flex flex-col sm:flex-row justify-center gap-3 pt-4">
-                <button onclick="saveToCloud('Draft')" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-6 py-3 rounded-xl shadow text-sm">
-                    💾 บันทึกเป็นใบร่าง (Draft)
+            <!-- ปุ่มบันทึกข้อมูล -->
+            <div id="form-action-buttons" class="flex flex-col sm:flex-row justify-center gap-3 pt-4">
+                <button onclick="saveToCloud('Draft')" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-6 py-3 rounded-xl shadow text-sm">
+                    💾 บันทึกฉบับร่าง / อัปเดตการลงนามบางส่วน (Draft)
                 </button>
                 <button onclick="saveToCloud('Completed')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl shadow text-sm">
-                    🚀 บันทึกยืนยันเป็นเอกสารสมบูรณ์ (Completed)
+                    🚀 บันทึกยืนยันเอกสารสมบูรณ์ (Completed)
                 </button>
             </div>
         </section>
@@ -265,9 +256,7 @@
                 </button>
             </div>
 
-            <!-- พื้นที่เอกสารขนาด A4 สำหรับพิมพ์ -->
             <div id="pdf-content" class="print-container bg-white p-8 sm:p-12 rounded-2xl shadow-xl border border-slate-200 max-w-[210mm] mx-auto text-slate-900 space-y-6 text-sm">
-                
                 <div class="flex justify-between items-start border-b pb-6">
                     <div>
                         <h1 class="text-2xl font-bold text-blue-700">ใบส่งมอบงาน</h1>
@@ -348,45 +337,19 @@
                         <p class="text-xs text-slate-400">วันที่: <span id="p-receiverSignDate">-</span></p>
                     </div>
                 </div>
-
             </div>
         </section>
     </main>
 
-    <!-- JavaScript ระบบสถานะและการจัดการ -->
     <script>
+        // ใส่ URL ที่ได้จากการ Deploy Google Apps Script ของไฟล์ "ฐานข้อมูลใบส่งมอบงาน (Work Delivery Database)"
         const GAS_WEB_APP_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
 
-        document.getElementById('deliveryDate').valueAsDate = new Date();
-
+        let deliveriesList = [];
         let senderSigDataUrl = '';
         let receiverSigDataUrl = '';
         let uploadedImages = [];
         let isFormLocked = false;
-        let mockDeliveriesDatabase = [
-            {
-                docNumber: "JOB-20261113-001",
-                deliveryDate: "2026-11-13",
-                senderCompany: "บริษัท เทค โซลูชั่นส์ จำกัด",
-                senderContact: "สมชาย มุ่งมั่น",
-                senderPhone: "081-234-5678",
-                senderSignPosition: "Project Manager",
-                senderAddress: "123 สาทร กรุงเทพฯ",
-                clientName: "บริษัท สยาม ริเทล จำกัด",
-                clientContact: "วิภาดา รักดี",
-                clientPhone: "02-987-6543",
-                receiverSignPosition: "IT Director",
-                clientAddress: "456 สุขุมวิท กรุงเทพฯ",
-                projectName: "พัฒนาระบบคลังสินค้าออนไลน์",
-                projectScope: "ส่งมอบระบบบริหารคลัง V.1.0",
-                itemsJson: JSON.stringify([{description: "ระบบคลังสินค้า", quantity: "1", itemStatus: "ผ่าน", remarks: "สมบูรณ์"}]),
-                senderSignName: "สมชาย มุ่งมั่น",
-                senderSignature: "",
-                receiverSignName: "วิภาดา รักดี",
-                receiverSignature: "",
-                status: "Draft"
-            }
-        ];
 
         function switchTab(tab) {
             ['dashboard', 'form', 'preview'].forEach(t => {
@@ -399,7 +362,7 @@
             if(activeBtn) activeBtn.classList.add('bg-blue-800');
 
             if (tab === 'dashboard') {
-                renderDashboard();
+                loadDeliveriesFromCloud();
             } else if (tab === 'preview') {
                 generatePreview();
             }
@@ -408,55 +371,157 @@
         function createNewForm() {
             isFormLocked = false;
             document.getElementById('docNumber').value = "JOB-" + new Date().toISOString().slice(0,10).replace(/-/g,'') + "-" + Math.floor(100+Math.random()*900);
-            document.getElementById('projectName').value = "";
-            document.getElementById('projectScope').value = "";
+            document.getElementById('deliveryDate').valueAsDate = new Date();
+            
+            ['senderCompany','senderContact','senderPhone','senderSignPosition','senderAddress',
+             'clientName','clientContact','clientPhone','receiverSignPosition','clientAddress',
+             'projectName','projectScope','senderSignName','receiverSignName'].forEach(id => {
+                 document.getElementById(id).value = '';
+             });
+
+            document.getElementById('items-container').innerHTML = '';
+            addItemRow();
             uploadedImages = [];
             renderImagePreviews();
-            clearPad('sender');
-            clearPad('receiver');
+            
+            reSign('sender');
+            reSign('receiver');
+            updateStatusIndicator('Draft');
             toggleFormLock(false);
             switchTab('form');
+        }
+
+        function updateStatusIndicator(status) {
+            const el = document.getElementById('form-current-status');
+            const signCount = (senderSigDataUrl ? 1 : 0) + (receiverSigDataUrl ? 1 : 0);
+
+            if (status === 'Completed' && signCount === 2) {
+                el.className = "text-xs font-semibold px-2.5 py-1 rounded bg-emerald-100 text-emerald-800";
+                el.innerText = "สถานะ: เอกสารสมบูรณ์ (ลงนามครบ 2/2)";
+            } else if (signCount === 1) {
+                el.className = "text-xs font-semibold px-2.5 py-1 rounded bg-blue-100 text-blue-800";
+                el.innerText = "สถานะ: ใบร่าง (ลงนามแล้ว 1/2 ฝ่าย)";
+            } else {
+                el.className = "text-xs font-semibold px-2.5 py-1 rounded bg-amber-100 text-amber-800";
+                el.innerText = "สถานะ: ใบร่าง (รอลงนาม 0/2)";
+            }
+
+            // อัปเดตป้ายสถานะแต่ละฝั่ง
+            const sBadge = document.getElementById('badgeSenderSigned');
+            if (senderSigDataUrl) {
+                sBadge.className = "text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold";
+                sBadge.innerText = "✓ ลงนามแล้ว";
+                document.getElementById('senderSavedImg').src = senderSigDataUrl;
+                document.getElementById('senderSavedPreview').classList.remove('hidden');
+                document.getElementById('senderPadWrapper').classList.add('hidden');
+            } else {
+                sBadge.className = "text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-500";
+                sBadge.innerText = "ยังไม่ลงนาม";
+                document.getElementById('senderSavedPreview').classList.add('hidden');
+                document.getElementById('senderPadWrapper').classList.remove('hidden');
+            }
+
+            const rBadge = document.getElementById('badgeReceiverSigned');
+            if (receiverSigDataUrl) {
+                rBadge.className = "text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold";
+                rBadge.innerText = "✓ ลงนามแล้ว";
+                document.getElementById('receiverSavedImg').src = receiverSigDataUrl;
+                document.getElementById('receiverSavedPreview').classList.remove('hidden');
+                document.getElementById('receiverPadWrapper').classList.add('hidden');
+            } else {
+                rBadge.className = "text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-500";
+                rBadge.innerText = "ยังไม่ลงนาม";
+                document.getElementById('receiverSavedPreview').classList.add('hidden');
+                document.getElementById('receiverPadWrapper').classList.remove('hidden');
+            }
         }
 
         function toggleFormLock(lock) {
             isFormLocked = lock;
             const banner = document.getElementById('lock-banner');
-            const inputs = document.querySelectorAll('#section-form input, #section-form textarea, #section-form select');
-            const pads = document.querySelectorAll('.pad-btn, .item-del-btn, #btn-add-item, #btn-sample');
+            const actionBtns = document.getElementById('form-action-buttons');
+            const inputs = document.querySelectorAll('#section-form input, #section-form textarea');
+            const editBtns = document.querySelectorAll('.pad-btn, .item-del-btn, #btn-add-item');
 
             if (lock) {
                 banner.classList.remove('hidden');
+                actionBtns.classList.add('hidden');
                 inputs.forEach(el => el.setAttribute('disabled', 'true'));
-                pads.forEach(el => el.classList.add('hidden'));
+                editBtns.forEach(el => el.classList.add('hidden'));
             } else {
                 banner.classList.add('hidden');
+                actionBtns.classList.remove('hidden');
                 inputs.forEach(el => el.removeAttribute('disabled'));
-                pads.forEach(el => el.classList.remove('hidden'));
+                editBtns.forEach(el => el.classList.remove('hidden'));
+            }
+        }
+
+        async function loadDeliveriesFromCloud() {
+            const tbody = document.getElementById('dashboard-tbody');
+            const loader = document.getElementById('loading-indicator');
+            
+            if (GAS_WEB_APP_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-red-500">กรุณาใส่ URL ของ Google Apps Script ในโค้ดก่อนใช้งานครับ</td></tr>`;
+                return;
+            }
+
+            loader.classList.remove('hidden');
+            tbody.innerHTML = '';
+
+            try {
+                const res = await fetch(GAS_WEB_APP_URL);
+                deliveriesList = await res.json();
+                renderDashboard();
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-red-500">ไม่สามารถโหลดข้อมูลได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตหรือสิทธิ์ Apps Script</td></tr>`;
+            } finally {
+                loader.classList.add('hidden');
             }
         }
 
         function renderDashboard() {
             const tbody = document.getElementById('dashboard-tbody');
             tbody.innerHTML = '';
+
+            if (deliveriesList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-400">ยังไม่มีรายการใบส่งมอบงานในฐานข้อมูล กด "+ สร้างใบร่างใหม่" เพื่อเริ่มต้น</td></tr>`;
+                return;
+            }
             
-            mockDeliveriesDatabase.forEach((item, idx) => {
-                const isComplete = (item.status === 'Completed' || (item.senderSignature && item.receiverSignature));
-                const badgeClass = isComplete ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800';
-                const statusText = isComplete ? 'เอกสารสมบูรณ์ (Completed)' : 'ใบร่าง (Draft)';
+            deliveriesList.forEach((item, idx) => {
+                const hasSender = Boolean(item.senderSignature);
+                const hasReceiver = Boolean(item.receiverSignature);
+                const isComplete = (item.status === 'Completed' && hasSender && hasReceiver);
+
+                let badgeClass = 'bg-amber-100 text-amber-800';
+                let statusText = 'ใบร่าง (รอลงนาม 0/2)';
+
+                if (isComplete) {
+                    badgeClass = 'bg-emerald-100 text-emerald-800';
+                    statusText = '✓ เอกสารสมบูรณ์ (2/2)';
+                } else if (hasSender || hasReceiver) {
+                    badgeClass = 'bg-blue-100 text-blue-800';
+                    statusText = `ใบร่าง (ลงนามแล้ว 1/2)`;
+                }
 
                 tbody.innerHTML += `
                     <tr class="border-b hover:bg-slate-50">
-                        <td class="p-3 font-semibold text-blue-600">${item.docNumber}</td>
-                        <td class="p-3">
-                            <p class="font-bold text-slate-800">${item.projectName || '-'}</p>
-                            <p class="text-xs text-slate-500">${item.clientName || '-'}</p>
+                        <td class="p-3 font-semibold text-blue-600 align-top">${item.docNumber}</td>
+                        <td class="p-3 align-top">
+                            <p class="font-bold text-slate-800">${item.projectName || '(ไม่ระบุชื่อโครงการ)'}</p>
+                            <p class="text-xs text-slate-500">ลูกค้า: ${item.clientName || '-'}</p>
                         </td>
-                        <td class="p-3 text-center">
-                            <span class="px-2 py-1 rounded text-xs font-semibold ${badgeClass}">${statusText}</span>
+                        <td class="p-3 text-center align-top">
+                            <span class="inline-block px-2.5 py-1 rounded text-xs font-semibold ${badgeClass}">${statusText}</span>
                         </td>
-                        <td class="p-3 text-center flex gap-1 justify-center">
-                            <button onclick="editDelivery(${idx})" class="bg-blue-100 text-blue-700 px-2.5 py-1 rounded text-xs font-medium hover:bg-blue-200">แก้ไข</button>
-                            <button onclick="viewDeliveryPreview(${idx})" class="bg-slate-200 text-slate-700 px-2.5 py-1 rounded text-xs font-medium hover:bg-slate-300">ดูเอกสาร</button>
+                        <td class="p-3 text-center align-top">
+                            <div class="flex flex-wrap gap-1 justify-center">
+                                <button onclick="editDelivery(${idx})" class="bg-blue-100 text-blue-700 px-2.5 py-1 rounded text-xs font-medium hover:bg-blue-200">
+                                    ${isComplete ? 'เปิดดู' : 'แก้ไข / ลงนาม'}
+                                </button>
+                                <button onclick="deleteDelivery('${item.docNumber}')" class="bg-red-100 text-red-600 px-2.5 py-1 rounded text-xs font-medium hover:bg-red-200">ลบ</button>
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -464,9 +529,9 @@
         }
 
         function editDelivery(index) {
-            const item = mockDeliveriesDatabase[index];
+            const item = deliveriesList[index];
             document.getElementById('docNumber').value = item.docNumber || '';
-            document.getElementById('deliveryDate').value = item.deliveryDate || '';
+            document.getElementById('deliveryDate').value = item.deliveryDate ? item.deliveryDate.slice(0,10) : '';
             document.getElementById('senderCompany').value = item.senderCompany || '';
             document.getElementById('senderContact').value = item.senderContact || '';
             document.getElementById('senderPhone').value = item.senderPhone || '';
@@ -485,35 +550,39 @@
             senderSigDataUrl = item.senderSignature || '';
             receiverSigDataUrl = item.receiverSignature || '';
 
-            // ตรวจสอบเงื่อนไขล็อก: ถ้าลงนามครบทั้ง 2 ฝ่ายแล้ว ห้ามแก้ไข
-            const isCompleted = (item.status === 'Completed' || (senderSigDataUrl && receiverSigDataUrl));
-            toggleFormLock(isCompleted);
+            // โหลดรายการส่งมอบย่อย
+            const container = document.getElementById('items-container');
+            container.innerHTML = '';
+            try {
+                const items = JSON.parse(item.itemsJson || '[]');
+                if (items.length > 0) {
+                    items.forEach(i => addItemRow(i.description, i.quantity, i.itemStatus, i.remarks));
+                } else {
+                    addItemRow();
+                }
+            } catch(e) { addItemRow(); }
 
+            const isCompleted = (item.status === 'Completed' && Boolean(senderSigDataUrl) && Boolean(receiverSigDataUrl));
+            updateStatusIndicator(isCompleted ? 'Completed' : 'Draft');
+            toggleFormLock(isCompleted);
             switchTab('form');
         }
 
-        function viewDeliveryPreview(index) {
-            editDelivery(index);
-            switchTab('preview');
-        }
+        async function deleteDelivery(docNumber) {
+            if (!confirm(`ยืนยันการลบใบส่งมอบงานเลขที่ ${docNumber} ออกจากฐานข้อมูลอย่างถาวรหรือไม่?`)) return;
 
-        function loadSampleData() {
-            document.getElementById('docNumber').value = "JOB-20261113-001";
-            document.getElementById('senderCompany').value = "บริษัท เทค โซลูชั่นส์ จำกัด";
-            document.getElementById('senderContact').value = "สมชาย มุ่งมั่น";
-            document.getElementById('senderPhone').value = "081-234-5678";
-            document.getElementById('senderSignPosition').value = "Project Manager";
-            document.getElementById('senderAddress').value = "123 อาคารสาทรทาวเวอร์ ถ.สาทรใต้ กรุงเทพฯ";
-            
-            document.getElementById('clientName').value = "บริษัท สยาม ริเทล จำกัด (มหาชน)";
-            document.getElementById('clientContact').value = "วิภาดา รักดี";
-            document.getElementById('clientPhone').value = "02-987-6543";
-            document.getElementById('receiverSignPosition').value = "IT Director";
-            document.getElementById('clientAddress').value = "456 ถนนสุขุมวิท คลองเตย กรุงเทพฯ";
-
-            document.getElementById('projectName').value = "โครงการพัฒนาระบบคลังสินค้าและจัดการสต็อกออนไลน์ (Phase 1)";
-            document.getElementById('projectScope').value = "ส่งมอบระบบบริหารจัดการคลังสินค้า เวอร์ชั่น 1.0 พร้อมคู่มือและเอกสาร UAT";
-            alert("เติมข้อมูลตัวอย่างเรียบร้อยแล้ว!");
+            try {
+                await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: "delete", docNumber: docNumber })
+                });
+                alert("ลบใบงานออกจากฐานข้อมูลเรียบร้อยแล้ว");
+                setTimeout(loadDeliveriesFromCloud, 1000);
+            } catch (err) {
+                alert("เกิดข้อผิดพลาดในการลบข้อมูล");
+            }
         }
 
         function addItemRow(desc='', qty='', status='', remark='') {
@@ -575,11 +644,13 @@
 
             function resizeCanvas() {
                 const rect = canvas.getBoundingClientRect();
-                canvas.width = rect.width;
-                canvas.height = rect.height;
+                if (rect.width > 0) {
+                    canvas.width = rect.width;
+                    canvas.height = rect.height;
+                }
             }
             window.addEventListener('resize', resizeCanvas);
-            resizeCanvas();
+            setTimeout(resizeCanvas, 200);
 
             function getPos(e) {
                 const rect = canvas.getBoundingClientRect();
@@ -606,21 +677,23 @@
             const canvas = document.getElementById(type === 'sender' ? 'canvasSender' : 'canvasReceiver');
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (type === 'sender') { senderSigDataUrl = ''; document.getElementById('statusSender').innerText = ''; }
-            else { receiverSigDataUrl = ''; document.getElementById('statusReceiver').innerText = ''; }
+        }
+
+        function reSign(type) {
+            if (isFormLocked) return;
+            if (type === 'sender') senderSigDataUrl = '';
+            else receiverSigDataUrl = '';
+            clearPad(type);
+            updateStatusIndicator('Draft');
         }
 
         function saveSignature(type) {
             if (isFormLocked) return;
             const canvas = document.getElementById(type === 'sender' ? 'canvasSender' : 'canvasReceiver');
             const dataUrl = canvas.toDataURL('image/png');
-            if (type === 'sender') {
-                senderSigDataUrl = dataUrl;
-                document.getElementById('statusSender').innerText = '✓ บันทึกลายเซ็นผู้ส่งมอบแล้ว';
-            } else {
-                receiverSigDataUrl = dataUrl;
-                document.getElementById('statusReceiver').innerText = '✓ บันทึกลายเซ็นผู้รับมอบแล้ว';
-            }
+            if (type === 'sender') senderSigDataUrl = dataUrl;
+            else receiverSigDataUrl = dataUrl;
+            updateStatusIndicator('Draft');
         }
 
         function generatePreview() {
@@ -638,32 +711,26 @@
             document.getElementById('p-projectName').innerText = document.getElementById('projectName').value;
             document.getElementById('p-projectScope').innerText = document.getElementById('projectScope').value;
 
-            // ตรวจสอบสถานะสมบูรณ์
-            const isCompleted = (senderSigDataUrl && receiverSigDataUrl);
+            const isCompleted = (senderSigDataUrl && receiverSigDataUrl && isFormLocked);
             const badge = document.getElementById('p-statusBadge');
             if (isCompleted) {
                 badge.className = "text-xs mt-1 font-semibold text-emerald-600";
                 badge.innerText = "สถานะ: เอกสารสมบูรณ์ (Completed)";
             } else {
                 badge.className = "text-xs mt-1 font-semibold text-amber-600";
-                badge.innerText = "สถานะ: ใบร่าง (Draft)";
+                badge.innerText = "สถานะ: ฉบับร่าง (Draft)";
             }
 
             const tbody = document.getElementById('p-items-tbody');
             tbody.innerHTML = '';
             document.querySelectorAll('.item-row').forEach((row, index) => {
-                const desc = row.querySelector('.item-desc').value;
-                const qty = row.querySelector('.item-qty').value;
-                const status = row.querySelector('.item-status').value;
-                const remark = row.querySelector('.item-remark').value;
-
                 tbody.innerHTML += `
                     <tr>
                         <td class="border border-slate-300 p-2 text-center">${index + 1}</td>
-                        <td class="border border-slate-300 p-2">${desc}</td>
-                        <td class="border border-slate-300 p-2 text-center">${qty}</td>
-                        <td class="border border-slate-300 p-2 text-center font-semibold text-blue-600">${status}</td>
-                        <td class="border border-slate-300 p-2">${remark}</td>
+                        <td class="border border-slate-300 p-2">${row.querySelector('.item-desc').value}</td>
+                        <td class="border border-slate-300 p-2 text-center">${row.querySelector('.item-qty').value}</td>
+                        <td class="border border-slate-300 p-2 text-center font-semibold text-blue-600">${row.querySelector('.item-status').value}</td>
+                        <td class="border border-slate-300 p-2">${row.querySelector('.item-remark').value}</td>
                     </tr>
                 `;
             });
@@ -682,20 +749,26 @@
 
             document.getElementById('p-senderSignName').innerText = document.getElementById('senderSignName').value;
             document.getElementById('p-senderSignPos').innerText = document.getElementById('senderSignPosition').value;
-            document.getElementById('p-senderSignDate').innerText = document.getElementById('deliveryDate').value;
+            document.getElementById('p-senderSignDate').innerText = senderSigDataUrl ? document.getElementById('deliveryDate').value : '-';
             if (senderSigDataUrl) {
                 document.getElementById('p-senderSignImg').src = senderSigDataUrl;
                 document.getElementById('p-senderSignImg').classList.remove('hidden');
                 document.getElementById('p-senderSignPlaceholder').classList.add('hidden');
+            } else {
+                document.getElementById('p-senderSignImg').classList.add('hidden');
+                document.getElementById('p-senderSignPlaceholder').classList.remove('hidden');
             }
 
             document.getElementById('p-receiverSignName').innerText = document.getElementById('receiverSignName').value;
             document.getElementById('p-receiverSignPos').innerText = document.getElementById('receiverSignPosition').value;
-            document.getElementById('p-receiverSignDate').innerText = document.getElementById('deliveryDate').value;
+            document.getElementById('p-receiverSignDate').innerText = receiverSigDataUrl ? document.getElementById('deliveryDate').value : '-';
             if (receiverSigDataUrl) {
                 document.getElementById('p-receiverSignImg').src = receiverSigDataUrl;
                 document.getElementById('p-receiverSignImg').classList.remove('hidden');
                 document.getElementById('p-receiverSignPlaceholder').classList.add('hidden');
+            } else {
+                document.getElementById('p-receiverSignImg').classList.add('hidden');
+                document.getElementById('p-receiverSignPlaceholder').classList.remove('hidden');
             }
         }
 
@@ -704,9 +777,13 @@
         }
 
         async function saveToCloud(statusType) {
-            // ถ้ายืนยันสถานะ Completed บังคับให้ลงนามครบทั้งสองฝ่าย
+            if (GAS_WEB_APP_URL.includes("https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap")) {
+                alert("กรุณาใส่ URL ของ Google Apps Script ในโค้ดก่อนบันทึกข้อมูลครับ");
+                return;
+            }
+
             if (statusType === 'Completed' && (!senderSigDataUrl || !receiverSigDataUrl)) {
-                alert("⚠️ ไม่สามารถบันทึกเป็นเอกสารสมบูรณ์ได้ เนื่องจากยังลงลายเซ็นไม่ครบทั้ง 2 ฝ่าย (ผู้ส่งมอบและผู้รับมอบ)");
+                alert("⚠️ ไม่สามารถบันทึกเป็นเอกสารสมบูรณ์ได้ เนื่องจากต้องลงลายเซ็นให้ครบทั้ง 2 ฝ่าย (ผู้ส่งมอบและผู้รับมอบ) ก่อนครับ\n\nหากต้องการเก็บงานไว้ก่อน กรุณากดปุ่ม 'บันทึกฉบับร่าง (Draft)'");
                 return;
             }
 
@@ -721,6 +798,7 @@
             });
 
             const payload = {
+                action: "save",
                 docNumber: document.getElementById('docNumber').value,
                 deliveryDate: document.getElementById('deliveryDate').value,
                 senderCompany: document.getElementById('senderCompany').value,
@@ -743,37 +821,28 @@
                 status: statusType
             };
 
-            // บันทึกลงหน่วยความจำจำลองในเครื่องเพื่อแสดงใน Dashboard ทันที
-            mockDeliveriesDatabase.push(payload);
-
-            if (!GAS_WEB_APP_URL.includes("https://script.google.com/macros/s/AKfycbzHOQIbmf3_S-I_y0g6NArYbWg_XhTwztInJg3iiMI7a9JpLUi6walpJgOCdmNbjhRrPw/exec")) {
-                try {
-                    await fetch(GAS_WEB_APP_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                } catch (error) {
-                    console.error("Cloud sync error:", error);
-                }
+            try {
+                await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                alert(statusType === 'Completed' 
+                    ? "🎉 ยืนยันเอกสารสมบูรณ์เรียบร้อย! ข้อมูลถูกบันทึกและล็อกการแก้ไขแล้ว" 
+                    : "💾 บันทึกฉบับร่างลงฐานข้อมูลเรียบร้อย สามารถเปิดกลับมาแก้ไขหรือลงนามเพิ่มเติมได้");
+                
+                if (statusType === 'Completed') toggleFormLock(true);
+                setTimeout(() => switchTab('dashboard'), 800);
+            } catch (error) {
+                console.error(error);
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล กรุณาลองใหม่อีกครั้ง");
             }
-
-            alert(statusType === 'Completed' ? "🎉 บันทึกเอกสารสมบูรณ์เรียบร้อย! เอกสารถูกล็อกห้ามแก้ไขแล้ว" : "💾 บันทึกใบร่าง (Draft) เรียบร้อยแล้ว");
-            
-            if (statusType === 'Completed') {
-                toggleFormLock(true);
-            }
-            switchTab('dashboard');
         }
 
-        async function loadDeliveriesFromCloud() {
-            alert("รีเฟรชข้อมูลรายการส่งมอบสำเร็จ!");
-            renderDashboard();
-        }
-
-        // เริ่มต้นแสดงหน้า Dashboard
-        renderDashboard();
+        // โหลดรายการจากฐานข้อมูลทันทีที่เปิดเว็บ
+        loadDeliveriesFromCloud();
     </script>
 </body>
 </html>
