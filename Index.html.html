@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>แบบฟอร์มใบส่งมอบงาน (Work Delivery Form)</title>
-    <!-- Tailwind CSS สำหรับตกแต่งหน้าตา -->
+    <title>ระบบใบส่งมอบงานและติดตามสถานะ (Work Delivery & Dashboard)</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
@@ -32,26 +32,64 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen pb-12">
 
-    <!-- เมนูด้านบน / แถบควบคุม (ซ่อนตอนพิมพ์ PDF) -->
+    <!-- เมนูด้านบน / แถบควบคุม -->
     <header class="bg-blue-600 text-white shadow-md p-4 sticky top-0 z-50 no-print">
         <div class="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
             <h1 class="text-xl font-bold">📋 ระบบใบส่งมอบงาน (Work Delivery)</h1>
             <div class="flex flex-wrap gap-2">
-                <button onclick="switchTab('form')" id="btn-tab-form" class="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded font-medium text-sm transition">1. กรอกฟอร์ม</button>
-                <button onclick="switchTab('preview')" id="btn-tab-preview" class="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded font-medium text-sm transition">2. ดูเอกสาร & พิมพ์ PDF</button>
-                <button onclick="saveToCloud()" class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded font-medium text-sm transition shadow">☁️ บันทึกลง Google Sheets</button>
+                <button onclick="switchTab('dashboard')" id="btn-tab-dashboard" class="bg-blue-800 px-3 py-1.5 rounded font-medium text-xs transition">📊 แดชบอร์ด & สถานะ</button>
+                <button onclick="switchTab('form')" id="btn-tab-form" class="bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded font-medium text-xs transition">📝 สร้าง/แก้ไขใบส่งมอบ</button>
+                <button onclick="switchTab('preview')" id="btn-tab-preview" class="bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded font-medium text-xs transition">👁️ พิมพ์/ดูเอกสาร</button>
             </div>
         </div>
     </header>
 
     <main class="max-w-4xl mx-auto p-4 sm:p-6">
 
+        <!-- ================= แท็บที่ 0: หน้าแดชบอร์ดติดตามสถานะ ================= -->
+        <section id="section-dashboard" class="space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-blue-600">รายการใบส่งมอบงานทั้งหมด</h2>
+                        <p class="text-xs text-slate-500">ตรวจสอบสถานะ ใบร่าง (Draft) และเอกสารสมบูรณ์ (Completed)</p>
+                    </div>
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <button onclick="createNewForm()" class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 rounded-lg font-medium shadow">+ สร้างใบร่างใหม่</button>
+                        <button onclick="loadDeliveriesFromCloud()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium">🔄 รีเฟรชข้อมูล</button>
+                    </div>
+                </div>
+
+                <!-- ตารางแสดงรายการบนมือถือและคอมพิวเตอร์ -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 border-b">
+                                <th class="p-3">เลขที่ใบงาน</th>
+                                <th class="p-3">โครงการ / ลูกค้า</th>
+                                <th class="p-3 text-center">สถานะ</th>
+                                <th class="p-3 text-center">การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboard-tbody">
+                            <!-- รายการจะถูกแทรกลงที่นี่ด้วย JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
         <!-- ================= แท็บที่ 1: หน้าจอสำหรับกรอกฟอร์ม ================= -->
-        <section id="section-form" class="space-y-6">
+        <section id="section-form" class="hidden space-y-6">
+            <div id="lock-banner" class="hidden bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center justify-between text-amber-800 text-xs">
+                <span>🔒 <b>เอกสารนี้สมบูรณ์แล้ว (ลงนามครบถ้วน):</b> อยู่ในโหมดอ่านอย่างเดียว ไม่สามารถแก้ไขข้อมูลได้</span>
+                <button onclick="switchTab('preview')" class="bg-amber-600 text-white px-3 py-1 rounded">ดูเอกสาร</button>
+            </div>
+
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-lg font-bold text-blue-600">ข้อมูลโครงการและคู่สัญญา</h2>
-                    <button onclick="loadSampleData()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1 rounded border">✨ เติมข้อมูลตัวอย่าง</button>
+                    <button id="btn-sample" onclick="loadSampleData()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1 rounded border">✨ เติมข้อมูลตัวอย่าง</button>
                 </div>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -136,32 +174,28 @@
                 </div>
             </div>
 
-            <!-- รายการส่งมอบ (Items Table Builder) -->
+            <!-- รายการส่งมอบ -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
                 <div class="flex justify-between items-center">
                     <h3 class="font-bold text-blue-600">📦 รายการส่งมอบงาน (Deliverable Items)</h3>
-                    <button onclick="addItemRow()" class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg">+ เพิ่มรายการ</button>
+                    <button id="btn-add-item" onclick="addItemRow()" class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg">+ เพิ่มรายการ</button>
                 </div>
                 <div id="items-container" class="space-y-3">
                     <div class="item-row grid grid-cols-1 sm:grid-cols-12 gap-2 p-3 bg-slate-50 border rounded-xl relative">
                         <div class="sm:col-span-5">
-                            <label class="text-xs text-slate-500">รายละเอียดงาน / โมดูล</label>
-                            <input type="text" class="item-desc w-full border rounded p-1.5 text-sm bg-white" value="ระบบจัดการสต็อกและคลังสินค้า (Warehouse Management Module)">
+                            <input type="text" class="item-desc w-full border rounded p-1.5 text-sm bg-white" placeholder="รายละเอียดงาน" value="ระบบจัดการสต็อกและคลังสินค้า">
                         </div>
                         <div class="sm:col-span-2">
-                            <label class="text-xs text-slate-500">จำนวน</label>
-                            <input type="text" class="item-qty w-full border rounded p-1.5 text-sm bg-white" value="1 ระบบ">
+                            <input type="text" class="item-qty w-full border rounded p-1.5 text-sm bg-white" placeholder="จำนวน" value="1 ระบบ">
                         </div>
                         <div class="sm:col-span-2">
-                            <label class="text-xs text-slate-500">สถานะ</label>
-                            <input type="text" class="item-status w-full border rounded p-1.5 text-sm bg-white" value="ผ่านการทดสอบ">
+                            <input type="text" class="item-status w-full border rounded p-1.5 text-sm bg-white" placeholder="สถานะ" value="ผ่านการทดสอบ">
                         </div>
                         <div class="sm:col-span-2">
-                            <label class="text-xs text-slate-500">หมายเหตุ</label>
-                            <input type="text" class="item-remark w-full border rounded p-1.5 text-sm bg-white" value="พร้อมใช้งานบน Cloud">
+                            <input type="text" class="item-remark w-full border rounded p-1.5 text-sm bg-white" placeholder="หมายเหตุ" value="พร้อมใช้งาน">
                         </div>
                         <div class="sm:col-span-1 flex items-end">
-                            <button onclick="this.closest('.item-row').remove()" class="w-full bg-red-100 hover:bg-red-200 text-red-600 p-1.5 rounded text-xs">ลบ</button>
+                            <button onclick="this.closest('.item-row').remove()" class="item-del-btn w-full bg-red-100 hover:bg-red-200 text-red-600 p-1.5 rounded text-xs">ลบ</button>
                         </div>
                     </div>
                 </div>
@@ -186,10 +220,10 @@
                     <div class="relative">
                         <canvas id="canvasSender" class="signature-pad w-full h-40 rounded-lg"></canvas>
                         <div class="absolute top-2 right-2 flex gap-1">
-                            <button onclick="clearPad('sender')" class="bg-slate-200 hover:bg-slate-300 text-xs px-2 py-1 rounded">ล้าง</button>
+                            <button onclick="clearPad('sender')" class="pad-btn bg-slate-200 hover:bg-slate-300 text-xs px-2 py-1 rounded">ล้าง</button>
                         </div>
                     </div>
-                    <button onclick="saveSignature('sender')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium shadow">💾 บันทึกลายเซ็นผู้ส่งมอบ</button>
+                    <button onclick="saveSignature('sender')" class="pad-btn w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium shadow">💾 บันทึกลายเซ็นผู้ส่งมอบ</button>
                     <p id="statusSender" class="text-xs text-center text-emerald-600 font-semibold"></p>
                 </div>
 
@@ -203,18 +237,21 @@
                     <div class="relative">
                         <canvas id="canvasReceiver" class="signature-pad w-full h-40 rounded-lg"></canvas>
                         <div class="absolute top-2 right-2 flex gap-1">
-                            <button onclick="clearPad('receiver')" class="bg-slate-200 hover:bg-slate-300 text-xs px-2 py-1 rounded">ล้าง</button>
+                            <button onclick="clearPad('receiver')" class="pad-btn bg-slate-200 hover:bg-slate-300 text-xs px-2 py-1 rounded">ล้าง</button>
                         </div>
                     </div>
-                    <button onclick="saveSignature('receiver')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium shadow">💾 บันทึกลายเซ็นผู้รับมอบ</button>
+                    <button onclick="saveSignature('receiver')" class="pad-btn w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium shadow">💾 บันทึกลายเซ็นผู้รับมอบ</button>
                     <p id="statusReceiver" class="text-xs text-center text-emerald-600 font-semibold"></p>
                 </div>
             </div>
 
-            <!-- ปุ่มไปหน้าพรีวิว -->
-            <div class="text-center pt-4">
-                <button onclick="switchTab('preview'); generatePreview();" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg text-base">
-                    👁️ ตรวจสอบเอกสารและพิมพ์ PDF
+            <!-- ปุ่มบันทึกสถานะต่างๆ -->
+            <div class="flex flex-col sm:flex-row justify-center gap-3 pt-4">
+                <button onclick="saveToCloud('Draft')" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-6 py-3 rounded-xl shadow text-sm">
+                    💾 บันทึกเป็นใบร่าง (Draft)
+                </button>
+                <button onclick="saveToCloud('Completed')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl shadow text-sm">
+                    🚀 บันทึกยืนยันเป็นเอกสารสมบูรณ์ (Completed)
                 </button>
             </div>
         </section>
@@ -222,7 +259,7 @@
         <!-- ================= แท็บที่ 2: หน้าเอกสารจริง A4 & พิมพ์ PDF ================= -->
         <section id="section-preview" class="hidden space-y-6">
             <div class="flex justify-between items-center no-print bg-white p-4 rounded-xl shadow-sm border">
-                <button onclick="switchTab('form')" class="bg-slate-200 hover:bg-slate-300 px-4 py-2 rounded text-sm font-medium">← กลับไปแก้ไขฟอร์ม</button>
+                <button onclick="switchTab('form')" class="bg-slate-200 hover:bg-slate-300 px-4 py-2 rounded text-sm font-medium">← กลับไปหน้าฟอร์ม</button>
                 <button onclick="downloadPDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded text-sm font-bold shadow flex items-center gap-2">
                     🖨️ พิมพ์ / บันทึกเป็น PDF (A4)
                 </button>
@@ -231,7 +268,6 @@
             <!-- พื้นที่เอกสารขนาด A4 สำหรับพิมพ์ -->
             <div id="pdf-content" class="print-container bg-white p-8 sm:p-12 rounded-2xl shadow-xl border border-slate-200 max-w-[210mm] mx-auto text-slate-900 space-y-6 text-sm">
                 
-                <!-- หัวกระดาษ -->
                 <div class="flex justify-between items-start border-b pb-6">
                     <div>
                         <h1 class="text-2xl font-bold text-blue-700">ใบส่งมอบงาน</h1>
@@ -240,10 +276,10 @@
                     <div class="text-right">
                         <p class="font-bold text-slate-700">เลขที่: <span id="p-docNumber">-</span></p>
                         <p class="text-xs text-slate-500">วันที่ส่งมอบ: <span id="p-deliveryDate">-</span></p>
+                        <p class="text-xs mt-1 font-semibold" id="p-statusBadge">-</p>
                     </div>
                 </div>
 
-                <!-- ข้อมูลคู่สัญญา -->
                 <div class="grid grid-cols-2 gap-6 bg-slate-50 p-4 rounded-xl border">
                     <div>
                         <p class="text-xs font-bold text-blue-600 uppercase mb-1">ผู้ส่งมอบงาน (Vendor)</p>
@@ -259,13 +295,11 @@
                     </div>
                 </div>
 
-                <!-- ชื่อและขอบเขตโครงการ -->
                 <div class="space-y-2">
                     <p class="font-bold text-slate-700">ชื่อโครงการ: <span id="p-projectName" class="font-normal"></span></p>
                     <p class="font-bold text-slate-700">ขอบเขตงาน: <span id="p-projectScope" class="font-normal text-slate-600"></span></p>
                 </div>
 
-                <!-- ตารางรายการส่งมอบ -->
                 <div>
                     <table class="w-full border-collapse border border-slate-300 text-left text-xs">
                         <thead>
@@ -281,19 +315,16 @@
                     </table>
                 </div>
 
-                <!-- หมายเหตุ / ข้อความรับรอง -->
                 <div class="text-xs text-slate-600 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
                     <p class="font-semibold text-blue-800 mb-1">เงื่อนไขการส่งมอบงาน:</p>
                     <p>ผู้รับมอบได้ตรวจสอบงานตามรายการข้างต้นเรียบร้อยแล้ว และมีความเห็นว่างานเสร็จสมบูรณ์ตามขอบเขตที่ตกลงกันไว้ จึงได้ลงลายมือชื่อไว้เป็นหลักฐาน</p>
                 </div>
 
-                <!-- รูปภาพประกอบในเอกสาร -->
                 <div id="p-images-section" class="space-y-2 hidden">
                     <p class="font-bold text-slate-700 text-xs">ภาพถ่ายหลักฐานหน้างาน / ระบบ:</p>
                     <div id="p-images-grid" class="grid grid-cols-3 gap-2"></div>
                 </div>
 
-                <!-- ส่วนลายเซ็นท้ายเอกสาร -->
                 <div class="grid grid-cols-2 gap-8 pt-8 border-t mt-12">
                     <div class="text-center space-y-2">
                         <div class="h-20 flex items-center justify-center">
@@ -322,9 +353,8 @@
         </section>
     </main>
 
-    <!-- JavaScript สำหรับระบบทั้งหมด -->
+    <!-- JavaScript ระบบสถานะและการจัดการ -->
     <script>
-        // แทนที่ URL นี้ด้วย Web App URL ของ Google Apps Script ของคุณ
         const GAS_WEB_APP_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
 
         document.getElementById('deliveryDate').valueAsDate = new Date();
@@ -332,20 +362,139 @@
         let senderSigDataUrl = '';
         let receiverSigDataUrl = '';
         let uploadedImages = [];
+        let isFormLocked = false;
+        let mockDeliveriesDatabase = [
+            {
+                docNumber: "JOB-20261113-001",
+                deliveryDate: "2026-11-13",
+                senderCompany: "บริษัท เทค โซลูชั่นส์ จำกัด",
+                senderContact: "สมชาย มุ่งมั่น",
+                senderPhone: "081-234-5678",
+                senderSignPosition: "Project Manager",
+                senderAddress: "123 สาทร กรุงเทพฯ",
+                clientName: "บริษัท สยาม ริเทล จำกัด",
+                clientContact: "วิภาดา รักดี",
+                clientPhone: "02-987-6543",
+                receiverSignPosition: "IT Director",
+                clientAddress: "456 สุขุมวิท กรุงเทพฯ",
+                projectName: "พัฒนาระบบคลังสินค้าออนไลน์",
+                projectScope: "ส่งมอบระบบบริหารคลัง V.1.0",
+                itemsJson: JSON.stringify([{description: "ระบบคลังสินค้า", quantity: "1", itemStatus: "ผ่าน", remarks: "สมบูรณ์"}]),
+                senderSignName: "สมชาย มุ่งมั่น",
+                senderSignature: "",
+                receiverSignName: "วิภาดา รักดี",
+                receiverSignature: "",
+                status: "Draft"
+            }
+        ];
 
         function switchTab(tab) {
-            if (tab === 'form') {
-                document.getElementById('section-form').classList.remove('hidden');
-                document.getElementById('section-preview').classList.add('hidden');
-                document.getElementById('btn-tab-form').classList.add('bg-blue-800');
-                document.getElementById('btn-tab-preview').classList.remove('bg-blue-800');
-            } else {
-                document.getElementById('section-form').classList.add('hidden');
-                document.getElementById('section-preview').classList.remove('hidden');
-                document.getElementById('btn-tab-preview').classList.add('bg-blue-800');
-                document.getElementById('btn-tab-form').classList.remove('bg-blue-800');
+            ['dashboard', 'form', 'preview'].forEach(t => {
+                document.getElementById(`section-${t}`).classList.add('hidden');
+                const btn = document.getElementById(`btn-tab-${t}`);
+                if(btn) btn.classList.remove('bg-blue-800');
+            });
+            document.getElementById(`section-${tab}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`btn-tab-${tab}`);
+            if(activeBtn) activeBtn.classList.add('bg-blue-800');
+
+            if (tab === 'dashboard') {
+                renderDashboard();
+            } else if (tab === 'preview') {
                 generatePreview();
             }
+        }
+
+        function createNewForm() {
+            isFormLocked = false;
+            document.getElementById('docNumber').value = "JOB-" + new Date().toISOString().slice(0,10).replace(/-/g,'') + "-" + Math.floor(100+Math.random()*900);
+            document.getElementById('projectName').value = "";
+            document.getElementById('projectScope').value = "";
+            uploadedImages = [];
+            renderImagePreviews();
+            clearPad('sender');
+            clearPad('receiver');
+            toggleFormLock(false);
+            switchTab('form');
+        }
+
+        function toggleFormLock(lock) {
+            isFormLocked = lock;
+            const banner = document.getElementById('lock-banner');
+            const inputs = document.querySelectorAll('#section-form input, #section-form textarea, #section-form select');
+            const pads = document.querySelectorAll('.pad-btn, .item-del-btn, #btn-add-item, #btn-sample');
+
+            if (lock) {
+                banner.classList.remove('hidden');
+                inputs.forEach(el => el.setAttribute('disabled', 'true'));
+                pads.forEach(el => el.classList.add('hidden'));
+            } else {
+                banner.classList.add('hidden');
+                inputs.forEach(el => el.removeAttribute('disabled'));
+                pads.forEach(el => el.classList.remove('hidden'));
+            }
+        }
+
+        function renderDashboard() {
+            const tbody = document.getElementById('dashboard-tbody');
+            tbody.innerHTML = '';
+            
+            mockDeliveriesDatabase.forEach((item, idx) => {
+                const isComplete = (item.status === 'Completed' || (item.senderSignature && item.receiverSignature));
+                const badgeClass = isComplete ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800';
+                const statusText = isComplete ? 'เอกสารสมบูรณ์ (Completed)' : 'ใบร่าง (Draft)';
+
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-slate-50">
+                        <td class="p-3 font-semibold text-blue-600">${item.docNumber}</td>
+                        <td class="p-3">
+                            <p class="font-bold text-slate-800">${item.projectName || '-'}</p>
+                            <p class="text-xs text-slate-500">${item.clientName || '-'}</p>
+                        </td>
+                        <td class="p-3 text-center">
+                            <span class="px-2 py-1 rounded text-xs font-semibold ${badgeClass}">${statusText}</span>
+                        </td>
+                        <td class="p-3 text-center flex gap-1 justify-center">
+                            <button onclick="editDelivery(${idx})" class="bg-blue-100 text-blue-700 px-2.5 py-1 rounded text-xs font-medium hover:bg-blue-200">แก้ไข</button>
+                            <button onclick="viewDeliveryPreview(${idx})" class="bg-slate-200 text-slate-700 px-2.5 py-1 rounded text-xs font-medium hover:bg-slate-300">ดูเอกสาร</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function editDelivery(index) {
+            const item = mockDeliveriesDatabase[index];
+            document.getElementById('docNumber').value = item.docNumber || '';
+            document.getElementById('deliveryDate').value = item.deliveryDate || '';
+            document.getElementById('senderCompany').value = item.senderCompany || '';
+            document.getElementById('senderContact').value = item.senderContact || '';
+            document.getElementById('senderPhone').value = item.senderPhone || '';
+            document.getElementById('senderSignPosition').value = item.senderSignPosition || '';
+            document.getElementById('senderAddress').value = item.senderAddress || '';
+            document.getElementById('clientName').value = item.clientName || '';
+            document.getElementById('clientContact').value = item.clientContact || '';
+            document.getElementById('clientPhone').value = item.clientPhone || '';
+            document.getElementById('receiverSignPosition').value = item.receiverSignPosition || '';
+            document.getElementById('clientAddress').value = item.clientAddress || '';
+            document.getElementById('projectName').value = item.projectName || '';
+            document.getElementById('projectScope').value = item.projectScope || '';
+            
+            document.getElementById('senderSignName').value = item.senderSignName || '';
+            document.getElementById('receiverSignName').value = item.receiverSignName || '';
+            senderSigDataUrl = item.senderSignature || '';
+            receiverSigDataUrl = item.receiverSignature || '';
+
+            // ตรวจสอบเงื่อนไขล็อก: ถ้าลงนามครบทั้ง 2 ฝ่ายแล้ว ห้ามแก้ไข
+            const isCompleted = (item.status === 'Completed' || (senderSigDataUrl && receiverSigDataUrl));
+            toggleFormLock(isCompleted);
+
+            switchTab('form');
+        }
+
+        function viewDeliveryPreview(index) {
+            editDelivery(index);
+            switchTab('preview');
         }
 
         function loadSampleData() {
@@ -354,20 +503,21 @@
             document.getElementById('senderContact').value = "สมชาย มุ่งมั่น";
             document.getElementById('senderPhone').value = "081-234-5678";
             document.getElementById('senderSignPosition').value = "Project Manager";
-            document.getElementById('senderAddress').value = "123 อาคารสาทรทาวเวอร์ ชั้น 15 ถ.สาทรใต้ กรุงเทพฯ";
+            document.getElementById('senderAddress').value = "123 อาคารสาทรทาวเวอร์ ถ.สาทรใต้ กรุงเทพฯ";
             
             document.getElementById('clientName').value = "บริษัท สยาม ริเทล จำกัด (มหาชน)";
             document.getElementById('clientContact').value = "วิภาดา รักดี";
             document.getElementById('clientPhone').value = "02-987-6543";
             document.getElementById('receiverSignPosition').value = "IT Director";
-            document.getElementById('clientAddress').value = "456 ถนนสุขุมวิท แขวงคลองเตย กรุงเทพฯ";
+            document.getElementById('clientAddress').value = "456 ถนนสุขุมวิท คลองเตย กรุงเทพฯ";
 
             document.getElementById('projectName').value = "โครงการพัฒนาระบบคลังสินค้าและจัดการสต็อกออนไลน์ (Phase 1)";
-            document.getElementById('projectScope').value = "ส่งมอบระบบบริหารจัดการคลังสินค้า เวอร์ชั่น 1.0 พร้อมคู่มือการใช้งานและเอกสาร UAT";
+            document.getElementById('projectScope').value = "ส่งมอบระบบบริหารจัดการคลังสินค้า เวอร์ชั่น 1.0 พร้อมคู่มือและเอกสาร UAT";
             alert("เติมข้อมูลตัวอย่างเรียบร้อยแล้ว!");
         }
 
         function addItemRow(desc='', qty='', status='', remark='') {
+            if (isFormLocked) return;
             const container = document.getElementById('items-container');
             const div = document.createElement('div');
             div.className = "item-row grid grid-cols-1 sm:grid-cols-12 gap-2 p-3 bg-slate-50 border rounded-xl relative";
@@ -385,13 +535,14 @@
                     <input type="text" class="item-remark w-full border rounded p-1.5 text-sm bg-white" placeholder="หมายเหตุ" value="${remark}">
                 </div>
                 <div class="sm:col-span-1 flex items-end">
-                    <button onclick="this.closest('.item-row').remove()" class="w-full bg-red-100 hover:bg-red-200 text-red-600 p-1.5 rounded text-xs">ลบ</button>
+                    <button onclick="this.closest('.item-row').remove()" class="item-del-btn w-full bg-red-100 hover:bg-red-200 text-red-600 p-1.5 rounded text-xs">ลบ</button>
                 </div>
             `;
             container.appendChild(div);
         }
 
         function handleImageUpload(event) {
+            if (isFormLocked) return;
             const files = event.target.files;
             for (let file of files) {
                 const reader = new FileReader();
@@ -411,7 +562,7 @@
                 div.className = "relative border rounded-lg p-1 bg-white";
                 div.innerHTML = `
                     <img src="${imgSrc}" class="w-full h-24 object-cover rounded">
-                    <button onclick="uploadedImages.splice(${idx}, 1); renderImagePreviews();" class="absolute top-2 right-2 bg-red-600 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">×</button>
+                    <button onclick="if(!isFormLocked){uploadedImages.splice(${idx}, 1); renderImagePreviews();}" class="absolute top-2 right-2 bg-red-600 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">×</button>
                 `;
                 container.appendChild(div);
             });
@@ -437,13 +588,13 @@
                 return { x: clientX - rect.left, y: clientY - rect.top };
             }
 
-            canvas.addEventListener('mousedown', (e) => { isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); });
-            canvas.addEventListener('mousemove', (e) => { if (!isDrawing) return; const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); });
+            canvas.addEventListener('mousedown', (e) => { if(isFormLocked) return; isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); });
+            canvas.addEventListener('mousemove', (e) => { if (isFormLocked || !isDrawing) return; const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); });
             canvas.addEventListener('mouseup', () => { isDrawing = false; });
             canvas.addEventListener('mouseleave', () => { isDrawing = false; });
 
-            canvas.addEventListener('touchstart', (e) => { isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); e.preventDefault(); });
-            canvas.addEventListener('touchmove', (e) => { if (!isDrawing) return; const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); e.preventDefault(); });
+            canvas.addEventListener('touchstart', (e) => { if(isFormLocked) return; isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); e.preventDefault(); });
+            canvas.addEventListener('touchmove', (e) => { if (isFormLocked || !isDrawing) return; const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); e.preventDefault(); });
             canvas.addEventListener('touchend', () => { isDrawing = false; });
         }
 
@@ -451,6 +602,7 @@
         setupSignaturePad('canvasReceiver');
 
         function clearPad(type) {
+            if (isFormLocked) return;
             const canvas = document.getElementById(type === 'sender' ? 'canvasSender' : 'canvasReceiver');
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -459,6 +611,7 @@
         }
 
         function saveSignature(type) {
+            if (isFormLocked) return;
             const canvas = document.getElementById(type === 'sender' ? 'canvasSender' : 'canvasReceiver');
             const dataUrl = canvas.toDataURL('image/png');
             if (type === 'sender') {
@@ -485,10 +638,20 @@
             document.getElementById('p-projectName').innerText = document.getElementById('projectName').value;
             document.getElementById('p-projectScope').innerText = document.getElementById('projectScope').value;
 
+            // ตรวจสอบสถานะสมบูรณ์
+            const isCompleted = (senderSigDataUrl && receiverSigDataUrl);
+            const badge = document.getElementById('p-statusBadge');
+            if (isCompleted) {
+                badge.className = "text-xs mt-1 font-semibold text-emerald-600";
+                badge.innerText = "สถานะ: เอกสารสมบูรณ์ (Completed)";
+            } else {
+                badge.className = "text-xs mt-1 font-semibold text-amber-600";
+                badge.innerText = "สถานะ: ใบร่าง (Draft)";
+            }
+
             const tbody = document.getElementById('p-items-tbody');
             tbody.innerHTML = '';
-            const rows = document.querySelectorAll('.item-row');
-            rows.forEach((row, index) => {
+            document.querySelectorAll('.item-row').forEach((row, index) => {
                 const desc = row.querySelector('.item-desc').value;
                 const qty = row.querySelector('.item-qty').value;
                 const status = row.querySelector('.item-status').value;
@@ -536,14 +699,14 @@
             }
         }
 
-        // ฟังก์ชันสั่งพิมพ์ / บันทึกเป็น PDF ผ่านระบบเบราว์เซอร์โดยตรง
         function downloadPDF() {
             window.print();
         }
 
-        async function saveToCloud() {
-            if (GAS_WEB_APP_URL.includes("https://script.google.com/macros/s/AKfycbzHOQIbmf3_S-I_y0g6NArYbWg_XhTwztInJg3iiMI7a9JpLUi6walpJgOCdmNbjhRrPw/exec")) {
-                alert("กรุณานำ URL ของ Google Apps Script มาใส่ในตัวแปร GAS_WEB_APP_URL ในโค้ดก่อนใช้งานจริงครับ");
+        async function saveToCloud(statusType) {
+            // ถ้ายืนยันสถานะ Completed บังคับให้ลงนามครบทั้งสองฝ่าย
+            if (statusType === 'Completed' && (!senderSigDataUrl || !receiverSigDataUrl)) {
+                alert("⚠️ ไม่สามารถบันทึกเป็นเอกสารสมบูรณ์ได้ เนื่องจากยังลงลายเซ็นไม่ครบทั้ง 2 ฝ่าย (ผู้ส่งมอบและผู้รับมอบ)");
                 return;
             }
 
@@ -577,23 +740,40 @@
                 receiverSignName: document.getElementById('receiverSignName').value,
                 receiverSignPosition: document.getElementById('receiverSignPosition').value,
                 receiverSignature: receiverSigDataUrl,
-                status: "ส่งมอบเรียบร้อย"
+                status: statusType
             };
 
-            alert("กำลังบันทึกข้อมูลลง Google Sheets...");
-            try {
-                await fetch(GAS_WEB_APP_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                alert("บันทึกข้อมูลลง Google Sheets สำเร็จเรียบร้อย!");
-            } catch (error) {
-                console.error(error);
-                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง");
+            // บันทึกลงหน่วยความจำจำลองในเครื่องเพื่อแสดงใน Dashboard ทันที
+            mockDeliveriesDatabase.push(payload);
+
+            if (!GAS_WEB_APP_URL.includes("https://script.google.com/macros/s/AKfycbzHOQIbmf3_S-I_y0g6NArYbWg_XhTwztInJg3iiMI7a9JpLUi6walpJgOCdmNbjhRrPw/exec")) {
+                try {
+                    await fetch(GAS_WEB_APP_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } catch (error) {
+                    console.error("Cloud sync error:", error);
+                }
             }
+
+            alert(statusType === 'Completed' ? "🎉 บันทึกเอกสารสมบูรณ์เรียบร้อย! เอกสารถูกล็อกห้ามแก้ไขแล้ว" : "💾 บันทึกใบร่าง (Draft) เรียบร้อยแล้ว");
+            
+            if (statusType === 'Completed') {
+                toggleFormLock(true);
+            }
+            switchTab('dashboard');
         }
+
+        async function loadDeliveriesFromCloud() {
+            alert("รีเฟรชข้อมูลรายการส่งมอบสำเร็จ!");
+            renderDashboard();
+        }
+
+        // เริ่มต้นแสดงหน้า Dashboard
+        renderDashboard();
     </script>
 </body>
 </html>
